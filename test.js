@@ -1,9 +1,14 @@
+// import { setInterval } from 'timers';
+
 
 var fs= require('fs');
 var $h= require('superagent');
 var cheerio=require('cheerio');
 var iconv = require('iconv-lite');
 var exec = require('child_process').exec;
+var gm = require('gm');
+var imageMagick = gm.subClass({ imageMagick: true });
+var escapeStringRegexp = require('escape-string-regexp');
 
 queryPages=2
 checkStartTime=""
@@ -11,6 +16,7 @@ checkEndTime=""
 querys=[]
 
 function patch(re,s){ //参数1正则式，参数2字符串
+    re=escapeStringRegexp(re)
     re=eval("/"+re+"/ig"); //不区分大小写，如须则去掉i,改为 re=eval_r("/"+re+"/g")
     qq=s.match(re)
     var len = qq==null?0:qq.length;
@@ -49,17 +55,6 @@ function getHtmls(urls,timeouts,callF){
 }
 
 function getHtmlSample(url,alls,num,callF){
-    // $h.get(url,function(err,data){
-    //     if(err) return ""
-    //     console.log(url)
-    //     // console.log(data)
-    //     if(data.status==302||data.status==301){
-    //         console.log("抓取到跳转型")
-    //         console.log(data.header)
-    //         return ""
-    //     }
-    //     alls.push(data.text)
-    // })
     $h("GET",url)
 	.set("X-Requested-With","XMLHttpRequest")
 	.set("User-Agent","Mozilla/5.0 (Windows NT 10.0; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0")
@@ -69,19 +64,15 @@ function getHtmlSample(url,alls,num,callF){
 	.set("Accept-Language","zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3")
 	.end(function(err,data){
         if(err) {
-            // num=num-1
-            // console.log(num)
+
             alls.push("")
             // console.log("遇到错误")
             return ""
         }
-        // console.log(url)
-        // console.log(data.status)
-        // console.log(data.text)
+
         if(data.status>300 && data.status<310){
             alls.push("")
-            // console.log("抓取到跳转型")
-            // console.log(data.headers)
+
             return ""
         }
         if(data.status!=200){
@@ -114,6 +105,7 @@ function search(querys){
 
 function choiBaidu(allHtml){
     allAnswer=[]
+    allAnswerHtml=[]
     allCache=[]
     for(i=0;i<allHtml.length;i++){
         $=cheerio.load(allHtml[i])
@@ -127,10 +119,13 @@ function choiBaidu(allHtml){
             // sample["url"]=tit.attr("href")
             sample["title"]=tit.text()
             sample["desc"]=dsc.text()
+            sample["titleHtml"]=tit.html()
+            sample["descHtml"]=dsc.html()
             // allCache.push(every.eq(t).find(".f13 .m").eq(0).attr("href"))
             allCache.push(tit.attr("href"))
             // console.log(sample)
             allAnswer.push(sample["title"])
+            allAnswerHtml.push(sample)
             allAnswer.push(sample["desc"])
             // getHtmls([sample["cache"]],2,text1)
            
@@ -247,21 +242,22 @@ function testAns(que,i){
     },2*1000*i)
 }
 
-aa=fs.readFile("ques.json",function(err,data){
-    if(err==null){
-        aa=JSON.parse(data)
-        console.log("打开测试题库"+aa.length)
-        for(i=0;i<aa.length;i++){
-            testAns(aa[i],i)
-        }
-    }
-})
+// aa=fs.readFile("ques.json",function(err,data){
+//     if(err==null){
+//         aa=JSON.parse(data)
+//         console.log("打开测试题库"+aa.length)
+//         for(i=0;i<aa.length;i++){
+//             testAns(aa[i],i)
+//         }
+//     }
+// })
 
 // querys=["大象无法完成以下哪个动作？",["跳起","跪下","游泳"]]
 // lastQuestion=""
 // search(querys)
 
 // var cli = 'adb shell screencap -p | sed \'s/\r$//\' > /Users/wukui/zhishi/screen.png';
+// var cli = 'adb shell screencap -p > /Users/wukui/zhishi/screen.png';
 // var options = { 
 //     encoding: 'utf-8',
 //     // timeout: 0,
@@ -270,47 +266,103 @@ aa=fs.readFile("ques.json",function(err,data){
 //     // setsid: false,
 //     // cwd: null,
 //     // env: null 
-// };
+// }
 
-
-
-// strtime=Date.now()
-// var cli = 'adb shell /system/bin/screencap -p /sdcard/screenshot.png'
-// exec(cli,function (err,stdout,stderr){
+// exec(cli,options,function (err,stdout,stderr){
 //     if (err){
 //         console.log(err);
 //         return;
 //     }
-//     var cli = 'adb pull /sdcard/screenshot.png /Users/wukui/zhishi/screen.png'
-//         exec(cli,function (err,stdout,stderr){
-//             if (err){
-//                 console.log(err);
-//                 return;
-//             }
-//             shibie("/Users/wukui/zhishi/screen.png")
-//             console.log('截图成功');
-//         })
-//     console.log('截图完毕');
+
+
 // })
+
+
+function start(){
+    startTimeTu=Date.now()
+    var cli = 'adb shell /system/bin/screencap -p >/Users/wukui/zhishi/screen.png'
+    exec(cli,function (err,stdout,stderr){
+        if (err){
+            console.log(err);
+            return;
+        }
+        console.log('截图完毕'+(Date.now()-startTimeTu)/1000);
+                imageMagick("/Users/wukui/zhishi/screen.png")
+                .setFormat('JPEG')
+                .resize(300)
+                .quality(70)
+                .strip()
+                .autoOrient()
+                // .autoOrient() 
+                // .crop(300, 250, 0, 100)
+                .write("/Users/wukui/zhishi/screenMin.jpg", function(err){
+                if(!err)
+                {
+                / 回调函数可执行删除oldimage /
+                shibie("/Users/wukui/zhishi/screenMin.jpg")
+                console.log('截图成功,用时'+(Date.now()-startTimeTu)/1000);
+                }
+               
+                
+            })
+        
+    })
+}
+
+function start1(){
+    startTimeTu=Date.now()
+    var cli = 'adb shell /system/bin/screencap -p /sdcard/screenshot.png'
+    exec(cli,function (err,stdout,stderr){
+        if (err){
+            console.log(err);
+            return;
+        }
+        var cli = 'adb pull /sdcard/screenshot.png /Users/wukui/zhishi/screen.png'
+            exec(cli,function (err,stdout,stderr){
+                if (err){
+                    console.log(err);
+                    return;
+                }
+                console.log('截图完毕,用时'+(Date.now()-startTimeTu)/1000);
+                imageMagick("/Users/wukui/zhishi/screen.png")
+                .resize(300)
+                .autoOrient() 
+                // .crop(300, 250, 0, 100)
+                .write("/Users/wukui/zhishi/screenMin.png", function(err){
+                if(!err)
+                {
+                / 回调函数可执行删除oldimage /
+                // shibie("/Users/wukui/zhishi/screenMin.png")
+                console.log('截图成功,用时'+(Date.now()-startTimeTu)/1000);
+                }
+                });
+                
+            })
+        // console.log('截图完毕');
+    })
+}
+
 
 function shibie(file){
     fs.readFile(file,function(err,data){
         if(err!=null){
             console.log("读取文件失败")
         }
-        // console.log(data.toString("base64"))
+        aa=encodeURI(data.toString("base64"))
         // return
+        strtime=Date.now()
         $h
         .post('https://aip.baidubce.com/rest/2.0/ocr/v1/general?access_token=24.2079a6ef9ed98a8c9acc75f0ac0dff20.2592000.1518588751.282335-10693201')
-        .send({ 'image': encodeURI(data.toString("base64")) })
+        .send({ 'image': aa })
         // .set('X-API-Key', 'foobar')
         .set('Content-Type', 'application/x-www-form-urlencoded')
         .end(function(err,res){
         if (err==null) {
             // alert('yay got ' + JSON.stringify(res.body));
             // console.log(res.body)
-            // console.log(res.text)
+            
             console.log("单次识别完毕，用时"+(Date.now()-strtime)/1000+"秒")
+            console.log(res.text)
             getQuerstion(JSON.parse(res.text))
         } else {
             alert('Oh no! error ' + res.text);
@@ -328,28 +380,100 @@ function getQuerstion(data){
     quers=""
     ans=[]
     console.log("进入问题拼合")
+    Qcheck=false
+    Qindex=0
     // console.log(data)
     for(i=0;i<data["words_result"].length;i++){
         // console.log(data["words_result"][i]["location"])
-        a=data["words_result"][i]["location"]["top"]
-        if(a<200){
-            continue
+        whe=data["words_result"][i]["location"]
+        sample=data["words_result"][i]
+        if(Qcheck==false && (sample.words.length>1 || i>0 ) && (sample.words[sample.words.length-1]=="？" || sample.words[sample.words.length-1]=="?")){
+            lastTop=whe.top
+            for(n=i;n>-1;n--){
+                
+                if((data["words_result"][n]["location"]["top"]+whe.height*1.5)>lastTop){
+                    quers=data["words_result"][n]["words"]+quers
+                    console.log(quers)
+                    lastTop=data["words_result"][n]["location"]["top"]
+                }
+            }
+            Qcheck==true
+            Qindex=i
+            break
         }
-        if(a<500){
-            quers+=data["words_result"][i]["words"]
-            continue
+ 
+    }
+    //搜索答案字段
+    lastLeft=0
+    samNum=0
+    ansIndex=Qindex
+    if(data["words_result"].length-Qindex>=6){
+        console.log("数据多")
+        for(i=Qindex+1;i<data["words_result"].length;i++){
+            lefs=data["words_result"][i]["location"]["left"]
+            cha=lefs-lastLeft
+            if(cha<2 && cha>-2){
+                samNum+=1
+            }else{
+                if(samNum>=3){
+                    break
+                }else{
+                    ansIndex=i
+                    samNum=1
+                    lastLeft=lefs
+                }
+            }
         }
-        if(a<1000){
-            ans.push(data["words_result"][i]["words"])
-            continue
+    }else{
+        samNum=data["words_result"].length-Qindex
+    }
+    
+
+    ans=[]
+    for(i=ansIndex+1;i<ansIndex+samNum;i++){
+        ans.push(data["words_result"][i]["words"])
+        console.log(i)
+        console.log(data["words_result"][i]["words"])
+    }
+
+    //清理某些规范规则
+    allCheck=true
+    allcon=[{"A":1,"a":1,"1":1},{"B":1,"b":1,"2":1},{"C":1,"c":1,"3":1},{"D":1,"d":1,"4":1}]
+    for(i=0;i<ans.length;i++){
+        // console.log(ans[i][0])
+        if(allcon[i][ans[i][0]]==1){
+            allCheck=false
+            ans[i]=ans[i].substring(1,ans[i].length+1)
+            if(ans[i][0]==")"||ans[i][0]=="."){
+                ans[i]=ans[i].substring(1,ans[i].length+1)
+            }
+            // break
         }
-        continue
+    }
+
+    // if(allCheck==true){
+    //     for(i=0;i<ans.length;i++){
+    //         ans[i]=ans[i].substring(1,ans[i].length+1)
+    //     }
+    // }
+    // console.log(quers)
+    // console.log(ans)
+
+           // if(a<200){
+        //     continue
+        // }
+        // if(a<500){
+        //     quers+=data["words_result"][i]["words"]
+        //     continue
+        // }
+        // if(a<1000){
+        //     ans.push(data["words_result"][i]["words"])
+        //     continue
+        // }
+        // continue
         
 
         
-    }
-    // console.log(quers)
-    // console.log(ans)
     
     if(ans.length>4){
         anss=[]
@@ -362,8 +486,19 @@ function getQuerstion(data){
         anss=ans
     }
     querys=[quers,anss]
+    console.log(querys)
     search(querys)
 }
+
+
+// setInterval(function(){
+//     start()
+// },2000)
+
+
+start()
+
+// getQuerstion(JSON.parse('{"log_id": 4711060008115555651, "words_result_num": 11, "words_result": [{"location": {"width": 43, "top": 12, "height": 10, "left": 27}, "words": "0Q浏器"}, {"location": {"width": 117, "top": 28, "height": 13, "left": 8}, "words": "店家远赴干里暴打女买家"}, {"location": {"width": 228, "top": 41, "height": 15, "left": 10}, "words": "苏州一位淘宝店主在买家付款后不发货,对方向客"}, {"location": {"width": 221, "top": 124, "height": 22, "left": 39}, "words": "10成语“白云苍狗”中的“苍"}, {"location": {"width": 96, "top": 152, "height": 20, "left": 97}, "words": "狗”本意指?"}, {"location": {"width": 64, "top": 218, "height": 16, "left": 39}, "words": "年老的狗"}, {"location": {"width": 37, "top": 221, "height": 10, "left": 215}, "words": "13800"}, {"location": {"width": 64, "top": 263, "height": 17, "left": 39}, "words": "受伤的狗"}, {"location": {"width": 79, "top": 308, "height": 18, "left": 39}, "words": "苍白色的狗"}, {"location": {"width": 33, "top": 311, "height": 12, "left": 221}, "words": "3323"}, {"location": {"width": 65, "top": 490, "height": 14, "left": 116}, "words": "左滑显示弹幕"}]}'))
 
 // $h
 // .post('https://aip.baidubce.com/rest/2.0/ocr/v1/general?access_token=24.2079a6ef9ed98a8c9acc75f0ac0dff20.2592000.1518588751.282335-10693201')
