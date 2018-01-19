@@ -10,10 +10,11 @@ var gm = require('gm');
 var imageMagick = gm.subClass({ imageMagick: true });
 var escapeStringRegexp = require('escape-string-regexp');
 
-queryPages=2
+queryPages=1
 checkStartTime=""
 checkEndTime=""
 querys=[]
+runStatus=0
 
 function patch(re,s){ //参数1正则式，参数2字符串
     re=escapeStringRegexp(re)
@@ -91,16 +92,19 @@ function getHtmlSample(url,alls,num,callF){
 
 
 function search(querys){
+    queryPages=1
+    
     baidu="https://www.baidu.com/s?ie=utf-8&mod=1&isbd=1&isid=ed5c968900062cf9&ie=utf-8&f=8&rsv_bp=1&tn=baidu&wd="
     queryUrls=[]
     answer=["好友","仇人","同事"]
     for(i=0;i<queryPages;i++){
+        queryUrls.push(baidu+encodeURIComponent(querys[0]))
         for(n=0;n<querys[1].length;n++){
             queryUrls.push(baidu+encodeURIComponent(querys[0]+" "+querys[1][n]))
         }
         
     }
-    getHtmls(queryUrls,2,choiBaidu)
+    getHtmls(queryUrls,1,choiBaidu)
 }
 
 function choiBaidu(allHtml){
@@ -125,8 +129,9 @@ function choiBaidu(allHtml){
             allCache.push(tit.attr("href"))
             // console.log(sample)
             allAnswer.push(sample["title"])
-            allAnswerHtml.push(sample)
+            allAnswerHtml.push(sample["titleHtml"])
             allAnswer.push(sample["desc"])
+            allAnswerHtml.push(sample["descHtml"])
             // getHtmls([sample["cache"]],2,text1)
            
             //计算rank
@@ -139,21 +144,42 @@ function choiBaidu(allHtml){
     rank=[]
     ansRank={}
     // console.log(allAnswer)
+    keywordExp=/(<em>[\s|\S]*?<\/em>)/
     for(i=0;i<querys[1].length;i++){
         rank.push(0)
         for(n=0;n<allAnswer.length;n++){
                 
                 rankNu=patch(querys[1][i],allAnswer[n])
+                keywords=keywordExp.exec(allAnswerHtml[n])
+                keyRank=0
+                if(keywords!=null){
+                    for(z=0;z<keywords.length;z++){
+                        keySample=keywords[z]
+                        keylen=keySample.length-9
+                        keyRank+=keylen
+                    }
+                }
+                // console.log(allAnswerHtml[n])
+                // console.log(keywords.length)
+                // console.log(keywords!=null)
+                // console.log(keyRank)
                 rank[i]+=rankNu
                 if(rankNu>0){
+                    rank[i]+=keyRank
                     ansRank[allAnswer[n]]=rankNu
                 }
+                // return
         }
     }
     kkeys=Object.keys(ansRank)
     if(kkeys.length>0){
         console.log("找到绝对精准关联词句----------------------------------->")
-        for(i=0;i<kkeys.length;i++){
+        if(kkeys.length>=3){
+            kkeysLen=3
+        }else{
+            kkeysLen=kkeys.length
+        }
+        for(i=0;i<kkeysLen;i++){
             console.log(kkeys[i])
         }
     }else{
@@ -162,7 +188,7 @@ function choiBaidu(allHtml){
             console.log(allAnswer[i])
         }
     }
-    
+    console.log("\r\n")
     max=0
     for(i=0;i<rank.length;i++){
         if(rank[i]>=rank[max]){
@@ -173,9 +199,13 @@ function choiBaidu(allHtml){
     console.log("\r\n")
     console.log("问题："+querys[0])
 
-    console.log("推荐答案"+querys[1][max]+"##")
+    console.log("推荐答案##"+querys[1][max])
 
-    console.log("开始抓取具体数据")
+    console.log("\r\n")
+    console.log("\r\n")
+    console.log("\r\n")
+    runStatus=0
+    // console.log("开始抓取具体数据")
     
     // getHtmls(allCache,2,pageInfo)
     
@@ -279,6 +309,8 @@ function testAns(que,i){
 
 
 function start(){
+    // console.log("进入答题流程")
+    // return
     startTimeTu=Date.now()
     var cli = 'adb shell /system/bin/screencap -p >/Users/wukui/zhishi/screen.png'
     exec(cli,function (err,stdout,stderr){
@@ -286,10 +318,10 @@ function start(){
             console.log(err);
             return;
         }
-        console.log('截图完毕'+(Date.now()-startTimeTu)/1000);
+        // console.log('截图完毕'+(Date.now()-startTimeTu)/1000);
                 imageMagick("/Users/wukui/zhishi/screen.png")
                 .setFormat('JPEG')
-                .resize(300)
+                .resize(500)
                 .quality(70)
                 .strip()
                 .autoOrient()
@@ -362,7 +394,7 @@ function shibie(file){
             // console.log(res.body)
             
             console.log("单次识别完毕，用时"+(Date.now()-strtime)/1000+"秒")
-            console.log(res.text)
+            // console.log(res.text)
             getQuerstion(JSON.parse(res.text))
         } else {
             alert('Oh no! error ' + res.text);
@@ -379,7 +411,7 @@ function getQuerstion(data){
     }
     quers=""
     ans=[]
-    console.log("进入问题拼合")
+    // console.log("进入问题拼合")
     Qcheck=false
     Qindex=0
     // console.log(data)
@@ -393,7 +425,7 @@ function getQuerstion(data){
                 
                 if((data["words_result"][n]["location"]["top"]+whe.height*1.5)>lastTop){
                     quers=data["words_result"][n]["words"]+quers
-                    console.log(quers)
+                    // console.log(quers)
                     lastTop=data["words_result"][n]["location"]["top"]
                 }
             }
@@ -408,7 +440,7 @@ function getQuerstion(data){
     samNum=0
     ansIndex=Qindex
     if(data["words_result"].length-Qindex>=6){
-        console.log("数据多")
+        // console.log("数据多")
         for(i=Qindex+1;i<data["words_result"].length;i++){
             lefs=data["words_result"][i]["location"]["left"]
             cha=lefs-lastLeft
@@ -432,8 +464,8 @@ function getQuerstion(data){
     ans=[]
     for(i=ansIndex+1;i<ansIndex+samNum;i++){
         ans.push(data["words_result"][i]["words"])
-        console.log(i)
-        console.log(data["words_result"][i]["words"])
+        // console.log(i)
+        // console.log(data["words_result"][i]["words"])
     }
 
     //清理某些规范规则
@@ -490,28 +522,34 @@ function getQuerstion(data){
     search(querys)
 }
 
+function readFShell(callback) {
+    if(runStatus==1){
+        return
+    }
+    runStatus=1
+    dataNum=0
+    process.stdout.write('输入回车进行答题:');
+    process.stdin.resume();
+    process.stdin.setEncoding('utf-8');
+    process.stdin.on('data', function(chunk) {
+        // console.log(1)
+        process.stdin.pause();
+        if(dataNum==0){
+            callback(chunk);
+        }
+        dataNum+=1
+        
+    });
+}
 
-// setInterval(function(){
-//     start()
-// },2000)
+
+setInterval(function(){
+    
+        readFShell(start)
+    
+},100)
 
 
-start()
+// start()
 
-// getQuerstion(JSON.parse('{"log_id": 4711060008115555651, "words_result_num": 11, "words_result": [{"location": {"width": 43, "top": 12, "height": 10, "left": 27}, "words": "0Q浏器"}, {"location": {"width": 117, "top": 28, "height": 13, "left": 8}, "words": "店家远赴干里暴打女买家"}, {"location": {"width": 228, "top": 41, "height": 15, "left": 10}, "words": "苏州一位淘宝店主在买家付款后不发货,对方向客"}, {"location": {"width": 221, "top": 124, "height": 22, "left": 39}, "words": "10成语“白云苍狗”中的“苍"}, {"location": {"width": 96, "top": 152, "height": 20, "left": 97}, "words": "狗”本意指?"}, {"location": {"width": 64, "top": 218, "height": 16, "left": 39}, "words": "年老的狗"}, {"location": {"width": 37, "top": 221, "height": 10, "left": 215}, "words": "13800"}, {"location": {"width": 64, "top": 263, "height": 17, "left": 39}, "words": "受伤的狗"}, {"location": {"width": 79, "top": 308, "height": 18, "left": 39}, "words": "苍白色的狗"}, {"location": {"width": 33, "top": 311, "height": 12, "left": 221}, "words": "3323"}, {"location": {"width": 65, "top": 490, "height": 14, "left": 116}, "words": "左滑显示弹幕"}]}'))
-
-// $h
-// .post('https://aip.baidubce.com/rest/2.0/ocr/v1/general?access_token=24.2079a6ef9ed98a8c9acc75f0ac0dff20.2592000.1518588751.282335-10693201')
-// .send({ 'url': 'http://upload-images.jianshu.io/upload_images/10068693-b5acc83a91dae8ff.png' })
-// // .set('X-API-Key', 'foobar')
-// .set('Content-Type', 'application/x-www-form-urlencoded')
-// .end(function(err,res){
-//   if (err==null) {
-//     // alert('yay got ' + JSON.stringify(res.body));
-//     console.log(res.body)
-//     console.log(res.text)
-//   } else {
-//     alert('Oh no! error ' + res.text);
-//   }
-// });
 

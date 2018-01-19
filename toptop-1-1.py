@@ -136,7 +136,10 @@ if '__main__' == __name__:
     print "测试通过"
     lastQ=""
     while True:
-        res = url.urlopen("http://htpmsg.jiecaojingxuan.com/msg/current?showTime="+str(int(round(time.time() * 1000))))
+        req=url.Request("http://htpmsg.jiecaojingxuan.com/msg/current?showTime="+str(int(round(time.time() * 1000))))
+            # req.add_header('Referer', 'http://www.baidu.com/')
+        req.add_header('User-Agent',"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.63 Safari/537.36")
+        res = url.urlopen(req)
         rs=res.read().decode("utf-8")
         rs=json.loads(rs)
         if rs[u"msg"]!=u"no data" and rs[u"data"][u"event"].has_key(u"desc"):
