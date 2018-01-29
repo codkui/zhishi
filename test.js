@@ -1,3 +1,5 @@
+// import { request } from 'https';
+
 // import { setInterval } from 'timers';
 
 
@@ -9,6 +11,8 @@ var exec = require('child_process').exec;
 var gm = require('gm');
 var imageMagick = gm.subClass({ imageMagick: true });
 var escapeStringRegexp = require('escape-string-regexp');
+var colors=require("colors")
+var http = require("http");
 
 queryPages=1
 checkStartTime=""
@@ -23,7 +27,7 @@ function patch(re,s){ //参数1正则式，参数2字符串
     var len = qq==null?0:qq.length;
     return len;
     }
-function getHtmls(urls,timeouts,callF){
+function getHtmls(urls,timeouts,callF,qu,res){
     if(arguments[1]==undefined){
         timeouts
     }
@@ -32,7 +36,7 @@ function getHtmls(urls,timeouts,callF){
     starTi=Date.now()
     // console.log(urls)
     for(i=0;i<urls.length;i++){
-        getHtmlSample(urls[i],allHtmls,urls.length,callF)
+        getHtmlSample(urls[i],allHtmls,urls.length,callF,qu,res)
     }
     // runTime=0
     // vv=setInterval(function(){
@@ -55,7 +59,7 @@ function getHtmls(urls,timeouts,callF){
     // },10)
 }
 
-function getHtmlSample(url,alls,num,callF){
+function getHtmlSample(url,alls,num,callF,qu,res){
     $h("GET",url)
 	.set("X-Requested-With","XMLHttpRequest")
 	.set("User-Agent","Mozilla/5.0 (Windows NT 10.0; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0")
@@ -85,13 +89,13 @@ function getHtmlSample(url,alls,num,callF){
             // console.log("预计抓取"+num)
             checkEndTime=Date.now()
             console.log("本次下载用时"+(checkEndTime-checkStartTime)/1000)
-            callF(alls)
+            callF(alls,qu,res)
         }
     })
 }
 
 
-function search(querys){
+function search(querys,res){
     queryPages=1
     
     baidu="https://www.baidu.com/s?ie=utf-8&mod=1&isbd=1&isid=ed5c968900062cf9&ie=utf-8&f=8&rsv_bp=1&tn=baidu&wd="
@@ -104,10 +108,10 @@ function search(querys){
         }
         
     }
-    getHtmls(queryUrls,1,choiBaidu)
+    getHtmls(queryUrls,1,choiBaidu,querys,res)
 }
 
-function choiBaidu(allHtml){
+function choiBaidu(allHtml,querys,res){
     allAnswer=[]
     allAnswerHtml=[]
     allCache=[]
@@ -171,40 +175,95 @@ function choiBaidu(allHtml){
                 // return
         }
     }
+
+    seachInfo={"all":[],"find":[],"end":[],"ans":""}
     kkeys=Object.keys(ansRank)
     if(kkeys.length>0){
-        console.log("找到绝对精准关联词句----------------------------------->")
+        // console.log("\r\n")
+        // console.log("找到绝对精准关联词句----------------------------------->")
+        // console.log("\r\n")
         if(kkeys.length>=3){
             kkeysLen=3
         }else{
             kkeysLen=kkeys.length
         }
         for(i=0;i<kkeysLen;i++){
-            console.log(kkeys[i])
+            textP=kkeys[i]
+            seachInfo["find"].push(textP)
+            // for(n=0;n<querys[1].length;n++){
+                // textA=textP.split(querys[1][n])
+                
+                // console.log(textA)
+                // textP=""
+                // for(x=0;x<textA.length;x++){
+                    
+                //     // if(x==0){
+                //     //     textP+=textA[x]
+                //     // }else{
+                //     //     switch(n){
+                //     //         case 0:
+                //     //             textP+=querys[1][n].red+textA[x]
+                //     //             break
+                //     //         case 1:
+                //     //             textP+=querys[1][n].green+textA[x]
+                //     //             break
+                //     //         case 2:
+                //     //             textP+=querys[1][n].blue+textA[x]
+                //     //             break
+                //     //         case 3:
+                //     //             textP+=querys[1][n].yellow+textA[x]
+                //     //             break
+                //     //         default:
+                //     //             textP+=querys[1][n].magenta+textA[x]
+                //     //             break
+                //     //     }
+                //     //     // textP+=querys[1][n].red+textA[x]
+                //     // }
+                // }
+            // }
+            // console.log(textP)
         }
     }else{
-        console.log("找到相关词句------------------------------------------>")
+        // console.log("\r\n")
+        // console.log("找到相关词句------------------------------------------>")
+        // console.log("\r\n")
+        // if(kkeys.length>=3){
+        //     kkeysLen=3
+        // }else{
+        //     kkeysLen=kkeys.length
+        // }
         for(i=0;i<allAnswer.length;i++){
-            console.log(allAnswer[i])
+            seachInfo["all"].push(allAnswer[i])
+            // console.log(allAnswer[i].green)
         }
     }
     console.log("\r\n")
     max=0
+    rankAll=0
+    for(i=0;i<rank.length;i++){
+        rankAll+=rank[i]
+        // console.log(querys[1][i]+"##权重##"+rank[i])
+    }
     for(i=0;i<rank.length;i++){
         if(rank[i]>=rank[max]){
             max=i
         }
-        console.log(querys[1][i]+"##权重##"+rank[i])
+        seachInfo["end"].push([querys[1][i],rank[i]/rankAll*100])
+        // console.log(querys[1][i]+"##权重##"+rank[i])
     }
-    console.log("\r\n")
-    console.log("问题："+querys[0])
 
-    console.log("推荐答案##"+querys[1][max])
+    seachInfo["quest"]=querys[0]
+    seachInfo["ans"]=querys[1][max]
+    // console.log("\r\n")
+    // console.log("问题："+querys[0])
 
-    console.log("\r\n")
-    console.log("\r\n")
-    console.log("\r\n")
+    // console.log("推荐答案##"+querys[1][max].underline.red)
+
+    // console.log("\r\n")
+    // console.log("\r\n")
+
     runStatus=0
+    res.end(JSON.stringify(seachInfo) )
     // console.log("开始抓取具体数据")
     
     // getHtmls(allCache,2,pageInfo)
@@ -543,11 +602,40 @@ function readFShell(callback) {
 }
 
 
-setInterval(function(){
+
+http.createServer(function (request, response) {
+
+    // 发送 HTTP 头部 
+    // HTTP 状态值: 200 : OK
+    // 内容类型: text/plain
+    console.log("收到请求数据")
+    response.writeHead(200, {'Content-Type': 'application/json;charset=utf-8','access-control-allow-origin':'*'});
+    angu=decodeURI(request.url)
+    angu=angu.split("/")
+    if(angu.length>2){
+        quest=angu[1]
+        ans1=[]
+        for(i=2;i<angu.length;i++){
+            if(angu[i]!=""){
+                ans1.push(angu[i])
+            }
+        }
+        console.log([quest,ans1])
+        // querys=[quest,ans1]
+        search([quest,ans1],response)
+    }else{
+        response.end('{"code":400}');
+    }
     
-        readFShell(start)
+    // 发送响应数据 "Hello World"
     
-},100)
+}).listen(8080);
+
+// setInterval(function(){
+    
+//         readFShell(start)
+    
+// },100)
 
 
 // start()
