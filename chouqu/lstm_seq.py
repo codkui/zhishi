@@ -56,9 +56,9 @@ from keras.layers import Input, LSTM, Dense
 import numpy as np
 
 batch_size = 16  # Batch size for training.
-epochs = 100  # Number of epochs to train for.
+epochs = 5  # Number of epochs to train for.
 latent_dim = 256  # Latent dimensionality of the encoding space.
-num_samples = 10000  # Number of samples to train on.
+num_samples = 1800  # Number of samples to train on.
 # Path to the data txt file on disk.
 data_path = '天龙八部Y.txt'
 out_path='天龙八部_people'
@@ -68,8 +68,8 @@ input_texts = []
 target_texts = []
 input_characters = set()
 target_characters = set()
-lines = open(data_path).read().split('\n')
-outLine=open(out_path).read().split('\n')
+lines = open(data_path,encoding="utf-8").read().split('\n')
+outLine=open(out_path,encoding="utf-8").read().split('\n')
 # for line in lines[: min(num_samples, len(lines) - 1)]:
 for i in range(len(lines[: min(num_samples, len(lines) - 1)])):
     # input_text, target_text = line.split('\t')
@@ -122,13 +122,13 @@ target_token_index = dict(
 
 encoder_input_data = np.zeros(
     (len(input_texts), max_encoder_seq_length, num_encoder_tokens),
-    dtype='float32')
+    dtype='float16')
 decoder_input_data = np.zeros(
     (len(input_texts), max_decoder_seq_length, num_decoder_tokens),
-    dtype='float32')
+    dtype='float16')
 decoder_target_data = np.zeros(
     (len(input_texts), max_decoder_seq_length, num_decoder_tokens),
-    dtype='float32')
+    dtype='float16')
 
 for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
     for t, char in enumerate(input_text):
