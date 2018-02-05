@@ -3,6 +3,7 @@ var $h= require('superagent');
 var cheerio=require('cheerio');
 var iconv = require('iconv-lite');
 var exec = require('child_process').exec;
+var http = require("http");
 
 queryPages=2
 checkStartTime=""
@@ -224,6 +225,7 @@ function getChongDing(){
    getHtmls(urls,2,text1)
 
 }
+
 
 
 querys=["中国无声影片的最高峰《神女》，是以下哪位演员的代表作 ",["胡蝶","周璇","阮玲玉"]]
